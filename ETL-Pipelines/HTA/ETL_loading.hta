@@ -1,0 +1,2440 @@
+<html>
+	<title>tranSMART ETL Pipelines</title>
+	<HTA:APPLICATION
+	 APPLICATIONNAME="tranSMART_ETL_Pipelines"
+	 ID="tranSMART_ETL_Pipelines"
+	 VERSION="1.0"/>
+
+	 <HEAD> 
+	<STYLE> 
+	body {filter:progid:DXImageTransform.Microsoft.Gradient(GradientType=0, 
+							StartColorStr='#9999FF', EndColorStr='#FFFFFF');font-family:Arial; 
+							font-size:12pt} 
+	.pgbar {filter:progid:DXImageTransform.Microsoft.Gradient(GradientType=0, 
+									StartColorStr='#FFFFFF', EndColorStr='#9999FF')} 
+	</STYLE> 
+	</HEAD> 
+
+	<script language="VBScript">
+	Dim objFSO
+	Dim objPath
+	Dim objFolder
+	Dim objFile
+	Dim currDir
+	Dim CCDdataLocation
+	Dim LSOdataLocation
+	Dim LCDdataLocation
+	Dim ARCdataLocation
+	Dim MMDdataLocation
+	Dim CHRTdataLocation
+	Dim ADDLdataLocation
+	Dim METAdataLocation
+	Dim RRATEdataLocation
+	Dim REGSCOREdataLocation
+	' Dim LSOstudyId
+	Dim LSOtopNode
+	' Dim ARCstudyId
+	Dim studyIdName
+	Dim studyId
+	Dim	studyName
+	Dim logFn
+	Dim logStatus
+	Dim logMsg
+	Dim LogLocation
+
+	Set objFSO = CreateObject("Scripting.FileSystemObject")
+	
+	'	**************************************************************************************************************************************
+	'	Check that all the files (.bat, config, .jar, etc) are present before continuing
+	
+	Sub Window_onLoad
+	
+		window.resizeTo 1400,800
+		
+		saveHTML = StatWin.InnerHTML
+		StatWin.InnerHTML = StatWin.InnerHTML&"Starting application..."
+		StatWin.style.display="block"
+
+		topArea.style.display="none"
+	
+		currDir = objFSO.GetAbsolutePathName(".")
+		
+		checkFile = currDir&"\run_check_clinical_data.bat"
+		if ( not objFSO.FileExists(checkFile)) then
+			Window.Alert(checkFile&" does not exist.  Please contact Support.")
+			Self.Close
+		End if
+		
+		checkFile = currDir&"\run_load_clinical_std_output.bat"
+		if ( not objFSO.FileExists(checkFile)) then
+			Window.Alert(checkFile&" does not exist.  Please contact Support.")
+			Self.Close
+		End if
+		
+		checkFile = currDir&"\run_load_clinical_data.bat"
+		if ( not objFSO.FileExists(checkFile)) then
+			Window.Alert(checkFile&" does not exist.  Please contact Support.")
+			Self.Close
+		End if
+		
+		checkFile = currDir&"\run_archive_study_files.bat"
+		if ( not objFSO.FileExists(checkFile)) then
+			Window.Alert(checkFile&" does not exist.  Please contact Support.")
+			Self.Close
+		End if
+		
+		checkFile = currDir&"\run_load_modifier_dimension.bat"
+		if ( not objFSO.FileExists(checkFile)) then
+			Window.Alert(checkFile&" does not exist.  Please contact Support.")
+			Self.Close
+		End if
+		
+		checkFile = currDir&"\run_publish_study_to_production.bat"
+		if ( not objFSO.FileExists(checkFile)) then
+			Window.Alert(checkFile&" does not exist.  Please contact Support.")
+			Self.Close
+		End if
+		
+		checkFile = currDir&"\run_setup_HTA.bat"
+		if ( not objFSO.FileExists(checkFile)) then
+			Window.Alert(checkFile&" does not exist.  Please contact Support.")
+			Self.Close
+		End if
+		
+		checkFile = currDir&"\run_link_addl_data.bat"
+		if ( not objFSO.FileExists(checkFile)) then
+			Window.Alert(checkFile&" does not exist.  Please contact Support.")
+			Self.Close
+		End if
+		
+		checkFile = currDir&"\run_load_study_metadata.bat"
+		if ( not objFSO.FileExists(checkFile)) then
+			Window.Alert(checkFile&" does not exist.  Please contact Support.")
+			Self.Close
+		End if
+		
+		checkFile = currDir&"\run_manage_security_for_study.bat"
+		if ( not objFSO.FileExists(checkFile)) then
+			Window.Alert(checkFile&" does not exist.  Please contact Support.")
+			Self.Close
+		End if
+		
+		checkFile = currDir&"\run_remove_study.bat"
+		if ( not objFSO.FileExists(checkFile)) then
+			Window.Alert(checkFile&" does not exist.  Please contact Support.")
+			Self.Close
+		End if
+		
+		checkFile = currDir&"\run_load_recombination_rates.bat"
+		if ( not objFSO.FileExists(checkFile)) then
+			Window.Alert(checkFile&" does not exist.  Please contact Support.")
+			Self.Close
+		End if
+		
+		checkFile = currDir&"\run_load_regulome_score.bat"
+		if ( not objFSO.FileExists(checkFile)) then
+			Window.Alert(checkFile&" does not exist.  Please contact Support.")
+			Self.Close
+		End if		
+		'	Get top nodes from i2b2 from Kettle
+		
+		logFn=""""&currDir&"\setup_HTA.log"&""""
+		Set objShell=CreateObject("wscript.shell")  
+		shellStr="cmd /s /c "&""""&""""&currDir&"\run_setup_HTA.bat"&""""&" "&""""&currDir&""""&" > "&logFn&""""
+		objShell.Run shellStr,0,True
+		Call CheckLog
+		if logStatus = "ERROR" then
+			MsgBox "Unable to retrieve system information - Please contact Support"
+			Self.Close
+		End if
+					
+		checkFile = currDir&"\top_node.txt"
+		if ( not objFSO.FileExists(checkFile)) then
+			Window.Alert(checkFile&" does not exist.  Please contact Support.")
+			Self.Close
+		End if
+		
+		checkFile = currDir&"\hta_kettle_params.txt"
+		if ( not objFSO.FileExists(checkFile)) then
+			Window.Alert(checkFile&" does not exist.  Please contact Support.")
+			Self.Close
+		End if
+			
+		topArea.style.display="block"
+		
+		StatWin.InnerHTML = saveHTML
+		StatWin.style.display="none"
+		
+	End Sub
+	
+	'	showCCD will hide Run buttons and display the Check Clinical Data selections
+	
+	Sub showCCD
+		CCDDiv.style.display="block"		
+		topArea.style.display="none"
+		CCDDataArea.style.display = "block"
+		CCDoutputArea.style.display = "block"
+		
+    End Sub
+	
+	'	**************************************************************************************************************************************
+	'	showLSO will hide Run buttons and display the Load Standard Output selections
+	
+	Sub showLSO
+        LSODiv.style.display="block"
+		topArea.style.display="none"
+		LSODataArea.style.display = "block"
+		
+    End Sub
+	
+	'	**************************************************************************************************************************************
+	'	showLCD will hide Run buttons and display the Load Clinical Data selections
+	
+	Sub showLCD
+		LCDDiv.style.display="block"		
+		topArea.style.display="none"
+		LCDDataArea.style.display = "block"
+		LCDoutputArea.style.display = "block"
+		
+    End Sub
+	
+	'	**************************************************************************************************************************************
+	'	showARC will hide Run buttons and display the Archive Loaded Study selections
+	
+	Sub showARC
+        ARCDiv.style.display="block"
+		topArea.style.display="none"
+		ARCDataArea.style.display = "block"
+		
+    End Sub
+	
+	'	**************************************************************************************************************************************
+	'	showMMD will hide Run buttons and display the Maintain Modifier Data selections
+	
+	Sub showMMD
+        MMDDiv.style.display="block"
+		topArea.style.display="none"
+		MMDDataArea.style.display = "block"
+		
+    End Sub
+	
+	'	**************************************************************************************************************************************
+	'	showCHRT will hide Run buttons and display the Load Cohort Analysis Data selections
+	
+	Sub showCHRT
+        CHRTDiv.style.display="block"
+		topArea.style.display="none"
+		CHRTDataArea.style.display = "block"
+		
+    End Sub
+
+	'	**************************************************************************************************************************************
+	'	showRRATE will hide Run buttons and display the Load Recombination Rate data selections
+	
+	Sub showRRATE
+        RRATEDiv.style.display="block"
+		topArea.style.display="none"
+		RRATEDataArea.style.display = "block"
+	
+	End Sub
+
+	'	**************************************************************************************************************************************
+	'	showREGSCORE will hide Run buttons and display the Load Regulome Score data selections
+	
+	Sub showREGSCORE
+        REGSCOREDiv.style.display="block"
+		topArea.style.display="none"
+		REGSCOREDataArea.style.display = "block"
+				
+    End Sub	
+	
+	'	**************************************************************************************************************************************
+	'	showPUB will hide Run buttons and display the Publish Study to Production selections
+	
+	Sub showPUB
+        		
+		topArea.style.display="none"
+		
+		saveHTML = StatWin.InnerHTML
+		StatWin.InnerHTML = StatWin.InnerHTML&"Loading study names"
+		StatWin.style.display="block"
+		'PUBDataArea.InnerHtml = strHtml
+		
+		PUBDataArea.style.display = "block"
+		
+		'	Get study_id and study_name from i2b2
+		
+		logFn=""""&currDir&"\get_study_names.log"&""""
+		Set objShell=CreateObject("wscript.shell")  
+		shellStr="cmd /s /c "&""""&""""&currDir&"\run_get_study_names.bat"&""""&" "&""""&currDir&""""&" > "&logFn&""""
+		objShell.Run shellStr,0,True
+		Call CheckLog
+		if logStatus = "ERROR" then
+			MsgBox "Unable to retrieve system information - Please contact Support"
+			Self.Close
+		End if
+					
+		checkFile = currDir&"\study_names.txt"
+		if ( not objFSO.FileExists(checkFile)) then
+			Window.Alert(checkFile&" does not exist.  Please contact Support.")
+			Self.Close
+		End if
+
+		For Each objOption in PUBstudyselect.Options
+			objOption.RemoveNode
+		Next 
+		
+		'	Add empty line to top node listbox
+		
+		Set objOption = Document.createElement("OPTION")
+		PUBstudyselect.Add(objOption)
+		Set objFSO = CreateObject("Scripting.FileSystemObject")  
+
+		'	Read study_names.txt and add to list box
+		studyNamesFile = currDir&"\study_names.txt"
+		Set objFile = objFSO.OpenTextFile(studyNamesFile)       
+ 
+		Do Until objFile.AtEndOFStream
+			studyIdName = objFile.ReadLine
+			'Window.Alert(studyIdName)
+			studyArray = Split(studyIdName, vbTab)
+			studyId = studyArray(0)
+			studyPath = studyArray(1)
+			studyName = studyArray(2)
+			studyEnv = studyArray(3)
+			'studyId = Mid(studyIdName,1,instr(studyIdName,vbTab)-1)
+			'studyName = Mid(studyIdName,instr(studyIdName,vbTab)+1)
+			'Window.alert("studyName: "&studyName)
+			' only select Dev study names
+			if studyEnv = "D" then
+				Set objOption = Document.createElement("OPTION")
+				objOption.Text = studyName
+				objOption.Value = studyId
+				PUBstudyselect.Add(objOption)
+			End if
+		Loop
+ 
+		objFile.Close 
+		
+		for i = 0 to (PUBdataType.Options.Length - 1)
+			PUBdataType.Options(i).Selected = false
+		Next
+		
+		StatWin.InnerHTML = saveHTML
+		StatWin.style.display="none"
+		PUBDiv.style.display="block"
+    End Sub
+	
+	'	**************************************************************************************************************************************
+	'	showADDL will hide Run buttons and display the Load Supplemental File selections
+	
+	Sub showADDL
+        ADDLDiv.style.display="block"
+		topArea.style.display="none"
+		ADDLDataArea.style.display = "block"
+		
+    End Sub
+	
+	'	**************************************************************************************************************************************
+	'	showMETA will hide Run buttons and display the Load Study Metadata selections
+	
+	Sub showMETA
+        METADiv.style.display="block"
+		topArea.style.display="none"
+		METADataArea.style.display = "block"
+		
+    End Sub
+	
+	'	**************************************************************************************************************************************
+	'	showSEC will hide Run buttons and display the Manage Security for Study selections
+	
+	Sub showSEC
+        		
+		topArea.style.display="none"
+		
+		saveHTML = StatWin.InnerHTML
+		StatWin.InnerHTML = StatWin.InnerHTML&"Loading study names"
+		StatWin.style.display="block"
+		'SECDataArea.InnerHtml = strHtml
+		
+		StatWin.InnerHTML = saveHTML
+		StatWin.style.display="none"
+		SECselectArea.style.display="none"
+		SECDiv.style.display="block"
+		SECstudyMsg.style.display="none"
+		
+    End Sub
+	
+	'	**************************************************************************************************************************************
+	'	showRMV will hide Run buttons and display the Remove Study from tranSMART
+	
+	Sub showRMV
+        		
+		topArea.style.display="none"
+		
+		saveHTML = StatWin.InnerHTML
+		StatWin.InnerHTML = StatWin.InnerHTML&"Loading study names"
+		StatWin.style.display="block"
+		'RMVDataArea.InnerHtml = strHtml
+		
+		StatWin.InnerHTML = saveHTML
+		StatWin.style.display="none"
+		RMVselectArea.style.display="none"
+		RMVDiv.style.display="block"
+		RMVstudyMsg.style.display="none"
+
+    End Sub
+	
+	'	**************************************************************************************************************************************
+	'	Reset Form will hide all selections and show the Run buttons
+	
+	Sub resetForm
+		LSODiv.style.display="none"
+		CCDDiv.style.display="none"
+		LCDDiv.style.display="none"
+        ARCDiv.style.display="none"
+		MMDDiv.style.display="none"
+		CHRTDIV.style.display="none"
+		PUBDiv.style.display="none"
+		ADDLDiv.style.display="none"
+		METADiv.style.display="none"
+		SECDiv.style.display="none"
+		RMVDiv.style.display="none"
+		RRATEDiv.style.display="none"
+		REGSCOREDiv.style.display="none"
+		
+		topArea.style.display="block"
+		
+		Statwin.InnerHtml=""
+		Statwin.style.display="none"
+		Statbar.style.display="none"
+		
+		strHtml = "<td><Font color = Blue></font></Br>"
+		CCDDataArea.InnerHtml = strHtml
+		LCDDataArea.InnerHtml = strHtml
+		LSODataArea.InnerHtml = strHtml
+		LSOstudyIdmsg.InnerHtml = strHtml
+		ARCDataArea.InnerHtml = strHtml
+		MMDDataArea.InnerHtml = strHtml
+		PUBDataArea.InnerHtml = strHtml
+		ADDLDataArea.InnerHtml = strHml
+		METADataArea.InnerHtml = strHml
+		SECDataArea.InnerHtml = strHtml
+		CHRTDataArea.InnerHtml = strHtml
+		RRATEDataArea.InnerHtml = strHtml
+		REGSCOREDataArea.InnerHtml = strHtml
+		
+		'	clear list boxes, text boxes, set values to defaults
+		
+		Call CCDClearListBox
+		Call LCDClearListBox
+		Call LSOClearTopNodes
+		Call ADDLClearListBox
+		Call METAClearListBox
+		Call MMDClearListBox
+		Call CHRTClearListBox
+		' LSOstudyId = ""
+		LSOtopNode = ""
+		LSOstudyName.value = ""
+		LSOsecurityRequired.Value = "X"
+		' ARCstudyId = ""
+		SECType.Value = "X"
+		SECenv.Value = "X"
+		RMVenv.Value = "X"
+		MMDloadType.Value = "X"
+		
+		'	Rerun setup_HTA to pickup any new top nodes
+		
+		logFn=""""&currDir&"\get_top_nodes.log"&""""
+		Set objShell=CreateObject("wscript.shell")  
+		shellStr="cmd /s /c "&""""&""""&currDir&"\run_setup_HTA.bat"&""""&" "&""""&currDir&""""&" > "&logFn&""""
+		objShell.Run shellStr,0,True
+		Call CheckLog
+		if logStatus = "ERROR" then
+			MsgBox "Unable to retrieve system information - Please contact Support"
+			Self.Close
+		End if
+		
+    End Sub
+	
+	'	**************************************************************************************************************************************
+	'	Display progress bar
+
+	Public strTimer 
+	Function ProgBar(strCmd, strMsg) 
+        Select Case strCmd 
+                Case "Init" 
+                        bar.style.width = "0%" 
+                        Statwin.innerHTML = Statwin.innerHTML & strMsg 
+                        strTimer = window.setInterval("ProgBar 'Run'" & "," & "dummyarg" , 100) 
+                        ' strTimer value is the delay in milliseconds 
+                Case "Run" 
+                        If Not bar.style.width = "100%" Then 
+                                bar.style.width = Left(bar.style.width, Len(bar.style.width) - 1) + .5 & "%" 
+                                ' Using .5 pixel increase with 100ms delay provides a smooth 
+                                ' progress bar transition 
+                        Else 
+                                bar.style.width = "0%" 
+                        End If 
+                Case "End" 
+                        Window.clearInterval(strTimer) 
+                        bar.style.width = "100%" 
+        End Select 
+	End Function 
+	
+	'	**************************************************************************************************************************************
+	'	Exit HTA Application when Exit/Quit button is clicked
+	
+	sub Quit_onClick
+	Self.Close
+	' or Window.Close
+	'    Window.Parent.Close ' You may or may not need this
+	end sub
+	
+	'	Check Clinical Data
+	'	When Browse button is clicked, user will select data location folder, the name of the folder selected is displayed, and a subroutine
+	'	is called to populate each of the listboxes
+	
+	Sub CCDSelectFolder
+	Set objShell = CreateObject("Shell.Application")
+	Set objFolder = objShell.BrowseForFolder (0, "Select the folder where the data files are located :", (0))
+	If objFolder Is Nothing Then
+		MsgBox "Cancelled by user" 
+		'Self.Close
+	Else
+		Set objFolderItem = objFolder.Self 
+		' objPath = objFolderItem.path
+		CCDdataLocation = objFolderItem.Path
+		strHtml = "<td><Font color = Blue>" & CCDdataLocation & "</font></Br>"
+		CCDDataArea.InnerHtml = strHtml	
+		Call CCDClearListbox
+		Call CCDpopulateListBoxColumn(CCDdataLocation)
+		End If
+	End Sub
+	
+	'	Check Clinical Data
+	'	Clear list boxes in the Check Clinical Data selections
+	
+	Sub CCDClearListbox
+    For Each objOption in CCDColumnMapBox.Options
+        objOption.RemoveNode
+    Next 
+    For Each objOption in CCDWordMapBox.Options
+        objOption.RemoveNode
+    Next
+    For Each objOption in CCDRecordExclusionBox.Options
+        objOption.RemoveNode
+    Next
+	End Sub
+
+	'	Check Clinical Data
+	'	sub called by CCDSelectFolder, insert empty line to each listbox and populate listboxes with filenames from folder selected
+	
+	Sub CCDpopulateListBoxColumn(CCDdataLocation)
+		If Run_CCDButton.Value = "" Then 
+			Window.Alert("Please enter a folder path in the textbox.")
+			Exit Sub
+		End If
+		Dim objFolder, objOption, strFolder, strSubFolder
+		Set objFolder = objFSO.GetFolder(CCDdataLocation)
+		'Add empty line to the listboxes
+		Set objOption = Document.createElement("OPTION")
+		CCDColumnMapBox.Add(objOption)
+		Set objOption = Document.createElement("OPTION")
+		CCDWordMapBox.Add(objOption)
+		Set objOption = Document.createElement("OPTION")
+		CCDRecordExclusionBox.Add(objOption)
+		For Each strFile In objFolder.Files
+			'Add Files to the listboxes
+			Set objOption = Document.createElement("OPTION")
+			objOption.Text = strFile.Name
+			objOption.Value = strFile.Name
+			'	if filename contains column, pre-select the filename
+			if instr(1,strFile.Name,"column",1) > 0 then
+				objOption.selected=true
+			end if
+			CCDColumnMapBox.Add(objOption)
+			Set objOption = Document.createElement("OPTION")
+			objOption.Text = strFile.Name
+			objOption.Value = strFile.Name
+			'	if filename contains word and map, pre-select the filename
+			if (instr(1,strFile.Name,"word",1) > 0) and (instr(1,strFile.Name,"map",1) > 0) then
+				objOption.selected=true
+			end if
+			CCDWordMapBox.Add(objOption)
+			Set objOption = Document.createElement("OPTION")
+			objOption.Text = strFile.Name
+			objOption.Value = strFile.Name
+			'	if filename contains record and exclu, pre-select the filename
+			if (instr(1,strFile.Name,"record",1) > 0) and (instr(1,strFile.Name,"exclu",1) > 0) then
+				objOption.selected=true
+			end if
+			CCDRecordExclusionBox.Add(objOption)
+		Next
+	End Sub
+	
+	'	Check Clinical Data
+	'	Validate required parameters and submit job
+	
+	Sub CCDSubmitJob
+		If CCDstudyId.Value = "" Then 
+			Window.Alert("Please enter a Study Id in the textbox.")
+			Exit Sub
+		End If
+		
+		'Prepare a regular expression object to validate study id contains only letters, numbers, or dashes
+		Set studyRegExp = New RegExp
+		studyRegExp.IgnoreCase = True
+		studyRegExp.Global = True
+		studyRegExp.Pattern = "^[a-zA-Z0-9-]+$"
+		
+		if studyRegExp.Test(CCDstudyId.Value) then
+			xstudyId=UCase(CCDstudyId.Value)
+		else
+			Window.Alert("Study Id may contain only numbers, letters, or dash. Please correct and hit Submit.")
+			Exit Sub
+		End If
+	
+		If CCDdataLocation = "" Then 
+			Window.Alert("Please select a Data Location.")
+			Exit Sub
+		End If
+		
+		xobjPath=""""&CCDdataLocation&""""
+		
+		If CCDColumnMapBox.Value = "" Then 
+			Window.Alert("Please select a Column Mapping File.")
+			Exit Sub
+		End If
+		
+		columnFile=CCDColumnMapBox.Value
+		columnFile=""""&columnFile&""""
+		
+		wordMap=CCDWordMapBox.Value
+		
+		if wordMap = "" Then
+			wordMap = "x"
+		else
+			wordMap=""""&wordMap&""""
+		End if
+		
+		recExcl=CCDRecordExclusionBox.Value
+		
+		if recExcl = "" Then
+			recExcl = "x"
+		else
+			recExcl=""""&recExcl&""""
+		End if	
+		
+		logFn=""""&CCDdataLocation&"\check_clinical_data.log"
+		
+		outputStr = "The output files will be placed in "&CCDdataLocation&"\"
+		outputStr = outputStr&xstudyId
+		strHtml = "<td><Font color = Blue>"&outputStr & "</font></Br>"
+		CCDoutputArea.InnerHtml = strHtml
+		 
+		Set objShell=CreateObject("wscript.shell")  
+		shellStr="cmd /s /c "&""""&""""&currDir&"\run_check_clinical_data.bat"&""""&" "&xstudyId&" "&xobjPath&" "&columnFile&" "
+		shellStr=shellStr&wordMap&" "&recExcl&" > "&logFn&" "&""""
+		Statwin.style.display="block"
+		Statbar.style.display="block"
+		ProgBar "Init", "Processing files...<br>"
+		objShell.Run shellStr,0,True
+		Call CheckLog
+		if logStatus = "ERROR" then
+			MsgBox "An error occurred while processing your request - Please contact Support"
+			Self.Close
+		End if
+		ProgBar "End", "dummyarg"
+		outputStr = "The study has been curated and the data files are in "&CCDDataLocation
+		MsgBox outputStr 
+		' Self.Close
+		Call resetForm
+	End Sub
+	
+	'	**************************************************************************************************************************************
+	'	Load Standard Output
+	'	When Browse button is clicked, user will select data location folder, the name of the folder selected is displayed, and a subroutine
+	'	is called to populate each of the listboxes
+	
+	Sub LSOSelectFolder
+
+		If LSOstudyId.Value = "" Then 
+			Window.Alert("Please enter a Study Id in the textbox.")
+			Exit Sub
+		End If
+		
+		studyId = LSOstudyId.Value;
+		Set objShell = CreateObject("Shell.Application")
+		Set objFolder = objShell.BrowseForFolder (0, "Select the folder where the data files are located :", (0))
+		If objFolder Is Nothing Then
+			MsgBox "Cancelled by user" 
+			'Self.Close
+		Else
+			Set objFolderItem = objFolder.Self 
+			' objPath = objFolderItem.path
+			LSOdataLocation = objFolderItem.Path
+			strHtml = "<td><Font color = Blue>" & LSOdataLocation & "</font></Br>"
+			LSODataArea.InnerHtml = strHtml	
+			Call LSOCheckstdoutputFile(LSOdataLocation)
+			Call LSOClearTopNodes
+			Call LSOPopulateTopNodes
+		End If
+	End Sub
+	
+	'	Load Standard Output
+	'	Check that STUDY_std_output.txt file exists in data location
+	
+	Sub LSOCheckstdoutputFile(LSOdataLocation)
+	
+		stdoutputFile=UCase(studyId)&"_std_output.txt"
+		gotFile="N"
+			
+		' Dim objFolder, objOption, strFolder, strSubFolder
+		Set objFolder = objFSO.GetFolder(LSOdataLocation)
+		For Each strFile In objFolder.Files
+			if strFile.Name = stdoutputFile then
+				gotFile="Y"
+				Exit Sub
+			End If
+		Next
+		If gotFile = "N" Then 
+			Window.Alert(stdoutputFile&" not found in folder.")
+			LSOdataLocation = ""
+			strHtml = "<td><Font color = Blue></font></Br>"
+			LSODataArea.InnerHtml = strHtml
+			LSOstudyIdmsg.InnerHtml = strHtml
+			Exit Sub
+		End If	
+	End Sub
+	
+	'	Load Standard Output
+	'	Clear all top node list box
+	
+	Sub LSOClearTopNodes
+		For Each objOption in LSOtopNodeselect.Options
+			objOption.RemoveNode
+		Next 
+	End Sub
+	
+	Sub LSOPopulateTopNodes
+	
+		'	Add empty line to top node listbox
+		
+		Set objOption = Document.createElement("OPTION")
+		LSOtopNodeselect.Add(objOption)
+		Set objFSO = CreateObject("Scripting.FileSystemObject")  
+
+		'	Read top_node.txt and add to list box
+		topNodeFile = currDir&"\top_node.txt"
+		Set objFile = objFSO.OpenTextFile(topNodeFile)       
+ 
+		Do Until objFile.AtEndOFStream
+			topNodeStr = objFile.ReadLine
+			Set objOption = Document.createElement("OPTION")
+			objOption.Text = topNodeStr
+			objOption.Value = topNodeStr
+			LSOtopNodeselect.Add(objOption)
+		Loop
+ 
+		objFile.Close 
+	End Sub
+	
+	'	Load Standard Output
+	'	Validate required parameters and submit job
+	
+	Sub LSOSubmitJob
+
+		if LSOtopNodeselect.value = "" and LSOtopNodetxt.value = "" then
+			Window.alert("Select a top node or enter a new one in the box provided.")
+			Exit Sub
+		End if
+		
+		if LSOtopNodeSelect.value <> "" and LSOtopNodeTxt.value <> "" then
+			Window.alert("Select either a top node or enter a new top node but not both.")
+			Exit Sub
+		End if
+		
+		if LSOtopNodetxt.value <> "" then
+			
+			'Prepare a regular expression object to validate top node contains only a-z, A-Z, 0-9, -, _, space or \
+			Set topNodeTextRegExp = New RegExp
+			topNodeTextRegExp.IgnoreCase = True
+			topNodeTextRegExp.Global = True
+			topNodeTextRegExp.Pattern = "^[\\a-zA-Z0-9 -_]+$"
+			if topNodeTextRegExp.test(LSOtopNodetxt.value) then
+				xtopNode=LSOtopNodetxt.Value
+			else
+				Window.alert("Top Node must only contain letters, numbers, space, dash, underscore, or backslash.")
+				Exit Sub
+			End if
+		else
+			xtopNode = LSOtopNodeselect.value
+		end if
+		
+		if LSOstudyName.value = "" then
+			Window.alert("Please enter a study name.")
+			Exit Sub
+		else
+			'Prepare a regular expression object to validate study name contains a-z, A-Z, 0-9, -, or _ 
+			Set studyNameRegExp = New RegExp
+			studyNameRegExp.IgnoreCase = True
+			studyNameRegExp.Global = True
+			studyNameRegExp.Pattern = "^[a-zA-Z0-9_-]+$"		
+			if studyNameRegExp.test(LSOstudyName.value) then
+				xstudyName = LSOstudyName.value
+			else
+				Window.alert("Study name must only contain letters, numbers, dash, or underscore.")
+				Exit Sub
+			End if
+		End if
+		
+		if left(xtopNode,1) <> "\" then
+			xtopNode="\"+xtopNode
+		end if
+
+		if right(xtopNode,1) <> "\" then
+			xtopNode=xtopNode&"\"
+		end if
+		
+		xtopNode=xtopNode&xstudyName
+		
+		xtopNode=xtopNode&"\\"
+		xtopNode=""""&xtopNode&""""
+		' Window.alert(xtopNode)
+		
+		If LSOdataLocation = "" Then 
+			Window.Alert("Please select a Data Location.")
+			Exit Sub
+		End If
+		' Window.alert(LSOdataLocation)
+		xobjPath=""""&LSOdataLocation&""""
+		
+		If LSOsecurityRequired.Value = "X" Then 
+			Window.Alert("Please select Yes or No for Security Required.")
+			Exit Sub
+		End If	
+		
+		logFn=""""&LSOdataLocation&"\load_clinical_std_output.log"&""""
+		 
+		Set objShell=CreateObject("wscript.shell")  
+		shellStr="cmd /s /c "&""""&""""&currDir&"\run_load_clinical_std_output.bat"&""""&" "&studyId&" "&xtopNode&" "
+		shellStr=shellStr&LSOsecurityRequired.Value&" > "&logFn&" "&""""
+		' Window.Alert(shellStr)
+		Statwin.style.display="block"
+		Statbar.style.display="block"
+		ProgBar "Init", "Processing files...<br>"
+		objShell.Run shellStr,0,True
+		Call CheckLog
+		if logStatus = "ERROR" then
+			MsgBox "An error occurred while processing your request - Please contact Support"
+			Self.Close
+		End if
+		ProgBar "End", "dummyarg"
+		MsgBox "Finished" 
+		' Self.Close
+		Call resetForm
+	End Sub
+	
+	'	Load Clinical Data
+	'	When Browse button is clicked, user will select data location folder, the name of the folder selected is displayed, and a subroutine
+	'	is called to populate each of the listboxes
+	
+	Sub LCDSelectFolder
+	Set objShell = CreateObject("Shell.Application")
+	Set objFolder = objShell.BrowseForFolder (0, "Select the folder where the data files are located :", (0))
+	If objFolder Is Nothing Then
+		MsgBox "Cancelled by user" 
+		'Self.Close
+	Else
+		Set objFolderItem = objFolder.Self 
+		' objPath = objFolderItem.path
+		LCDdataLocation = objFolderItem.Path
+		strHtml = "<td><Font color = Blue>" & LCDdataLocation & "</font></Br>"
+		LCDDataArea.InnerHtml = strHtml	
+		Call LCDClearTopNodes
+		Call LCDPopulateTopNodes
+		Call LCDClearListbox
+		Call LCDpopulateListBoxColumn(LCDdataLocation)
+		End If
+	End Sub
+	
+	'	Load Clinical Data
+	'	Clear all top node list box
+	
+	Sub LCDClearTopNodes
+		For Each objOption in LCDtopNodeselect.Options
+			objOption.RemoveNode
+		Next 
+	End Sub
+	
+	Sub LCDPopulateTopNodes
+	
+		'	Add empty line to top node listbox
+		
+		Set objOption = Document.createElement("OPTION")
+		LCDtopNodeselect.Add(objOption)
+		Set objFSO = CreateObject("Scripting.FileSystemObject")  
+
+		'	Read top_node.txt and add to list box
+		topNodeFile = currDir&"\top_node.txt"
+		Set objFile = objFSO.OpenTextFile(topNodeFile)       
+ 
+		Do Until objFile.AtEndOFStream
+			topNodeStr = objFile.ReadLine
+			Set objOption = Document.createElement("OPTION")
+			objOption.Text = topNodeStr
+			objOption.Value = topNodeStr
+			LCDtopNodeselect.Add(objOption)
+		Loop
+ 
+		objFile.Close 
+	End Sub
+	
+	'	Load Clinical Data
+	'	Clear list boxes in the Load Clinical Data selections
+	
+	Sub LCDClearListbox
+    For Each objOption in LCDColumnMapBox.Options
+        objOption.RemoveNode
+    Next 
+    For Each objOption in LCDWordMapBox.Options
+        objOption.RemoveNode
+    Next
+    For Each objOption in LCDRecordExclusionBox.Options
+        objOption.RemoveNode
+    Next
+	End Sub
+
+	'	Load Clinical Data
+	'	sub called by LCDSelectFolder, insert empty line to each listbox and populate listboxes with filenames from folder selected
+	
+	Sub LCDpopulateListBoxColumn(LCDdataLocation)
+		
+		If Run_LCDButton.Value = "" Then 
+			Window.Alert("Please enter a folder path in the textbox.")
+			Exit Sub
+		End If
+		Dim objFolder, objOption, strFolder, strSubFolder
+		Set objFolder = objFSO.GetFolder(LCDdataLocation)
+		'Add empty line to the listboxes
+		Set objOption = Document.createElement("OPTION")
+		LCDColumnMapBox.Add(objOption)
+		Set objOption = Document.createElement("OPTION")
+		LCDWordMapBox.Add(objOption)
+		Set objOption = Document.createElement("OPTION")
+		LCDRecordExclusionBox.Add(objOption)
+		For Each strFile In objFolder.Files
+			'Add Files to the listboxes
+			Set objOption = Document.createElement("OPTION")
+			objOption.Text = strFile.Name
+			objOption.Value = strFile.Name
+			'	if filename contains column, pre-select the filename
+			if instr(1,strFile.Name,"column",1) > 0 then
+				objOption.selected=true
+			end if
+			LCDColumnMapBox.Add(objOption)
+			Set objOption = Document.createElement("OPTION")
+			objOption.Text = strFile.Name
+			objOption.Value = strFile.Name
+			'	if filename contains word and map, pre-select the filename
+			if (instr(1,strFile.Name,"word",1) > 0) and (instr(1,strFile.Name,"map",1) > 0) then
+				objOption.selected=true
+			end if
+			LCDWordMapBox.Add(objOption)
+			Set objOption = Document.createElement("OPTION")
+			objOption.Text = strFile.Name
+			objOption.Value = strFile.Name
+			'	if filename contains record and exclu, pre-select the filename
+			if (instr(1,strFile.Name,"record",1) > 0) and (instr(1,strFile.Name,"exclu",1) > 0) then
+				objOption.selected=true
+			end if
+			LCDRecordExclusionBox.Add(objOption)
+		Next
+	End Sub
+	
+	'	Load Clinical Data
+	'	Validate required parameters and submit job
+	
+	Sub LCDSubmitJob
+	
+		If LCDstudyId.Value = "" Then 
+			Window.Alert("Please enter a Study Id in the textbox.")
+			Exit Sub
+		End If
+		
+		'Prepare a regular expression object to validate study id contains only letters, numbers, or dashes
+		Set studyRegExp = New RegExp
+		studyRegExp.IgnoreCase = True
+		studyRegExp.Global = True
+		studyRegExp.Pattern = "^[a-zA-Z0-9-]+$"
+		
+		if studyRegExp.Test(LCDstudyId.Value) then
+			xstudyId=UCase(LCDstudyId.Value)
+		else
+			Window.Alert("Study Id may contain only numbers, letters, or dash. Please correct and hit Submit.")
+			Exit Sub
+		End If
+		
+		if LCDtopNodeselect.value = "" and LCDtopNodetxt.value = "" then
+			Window.alert("Select a top node or enter a new one in the box provided.")
+			Exit Sub
+		End if
+		
+		if LCDtopNodeSelect.value <> "" and LCDtopNodeTxt.value <> "" then
+			Window.alert("Select either a top node or enter a new top node but not both.")
+			Exit Sub
+		End if
+		
+		if LCDtopNodetxt.value <> "" then
+			
+			'Prepare a regular expression object to validate top node contains only a-z, A-Z, 0-9, -, _, space or \
+			Set topNodeTextRegExp = New RegExp
+			topNodeTextRegExp.IgnoreCase = True
+			topNodeTextRegExp.Global = True
+			topNodeTextRegExp.Pattern = "^[\\a-zA-Z0-9 -_]+$"
+			if topNodeTextRegExp.test(LCDtopNodetxt.value) then
+				xtopNode=LCDtopNodetxt.Value
+			else
+				Window.alert("Top Node must only contain letters, numbers, space, dash, underscore, or backslash.")
+				Exit Sub
+			End if
+		else
+			xtopNode = LCDtopNodeselect.value
+		end if
+		
+		if LCDstudyName.value = "" then
+			Window.alert("Please enter a study name.")
+			Exit Sub
+		else
+			'Prepare a regular expression object to validate study name contains a-z, A-Z, 0-9, -, or _ 
+			Set studyNameRegExp = New RegExp
+			studyNameRegExp.IgnoreCase = True
+			studyNameRegExp.Global = True
+			studyNameRegExp.Pattern = "^[a-zA-Z0-9_-]+$"		
+			if studyNameRegExp.test(LCDstudyName.value) then
+				xstudyName = LCDstudyName.value
+			else
+				Window.alert("Study name must only contain letters, numbers, dash, or underscore.")
+				Exit Sub
+			End if
+		End if
+		
+		if left(xtopNode,1) <> "\" then
+			xtopNode="\"+xtopNode
+		end if
+
+		if right(xtopNode,1) <> "\" then
+			xtopNode=xtopNode&"\"
+		end if
+		
+		xtopNode=xtopNode&xstudyName
+		
+		xtopNode=xtopNode&"\\"
+		xtopNode=""""&xtopNode&""""
+		' Window.alert(xtopNode)
+	
+		If LCDdataLocation = "" Then 
+			Window.Alert("Please select a Data Location.")
+			Exit Sub
+		End If
+		
+		xobjPath=""""&LCDdataLocation&""""
+		
+		If LCDColumnMapBox.Value = "" Then 
+			Window.Alert("Please select a Column Mapping File.")
+			Exit Sub
+		End If
+		
+		columnFile=LCDColumnMapBox.Value
+		columnFile=""""&columnFile&""""
+		
+		wordMap=LCDWordMapBox.Value
+		
+		if wordMap = "" Then
+			wordMap = "x"
+		else
+			wordMap=""""&wordMap&""""
+		End if
+		
+		recExcl=LCDRecordExclusionBox.Value
+		
+		if recExcl = "" Then
+			recExcl = "x"
+		else
+			recExcl=""""&recExcl&""""
+		End if	
+		
+		logFn=""""&LCDdataLocation&"\load_clinical_data.log"
+		
+		'outputStr = "The output files will be placed in "&LCDdataLocation&"\"
+		'outputStr = outputStr&xstudyId
+		'strHtml = "<td><Font color = Blue>"&outputStr & "</font></Br>"
+		'LCDoutputArea.InnerHtml = strHtml
+		 
+		Set objShell=CreateObject("wscript.shell")  
+		shellStr="cmd /s /c "&""""&""""&currDir&"\run_load_clinical_data.bat"&""""&" "&xstudyId&" "&xobjPath&" "&columnFile&" "
+		shellStr=shellStr&wordMap&" "&recExcl&" "&xtopNode&" > "&logFn&" "&""""
+		Statwin.style.display="block"
+		Statbar.style.display="block"
+		ProgBar "Init", "Processing files...<br>"
+		objShell.Run shellStr,0,True
+		Call CheckLog
+		if logStatus = "ERROR" then
+			MsgBox "An error occurred while processing your request - Please contact Support"
+			Self.Close
+		End if
+		ProgBar "End", "dummyarg"
+		outputStr = "The study has been loaded"
+		MsgBox outputStr 
+		' Self.Close
+		Call resetForm
+	End Sub
+
+	'	************************************************************************************************************************
+	'	Maintain Modifier Data
+	'	When Browse button is clicked, user will select modifier file folder, the name of the folder selected is displayed, and a subroutine
+	'	is called to populate the listboxe
+	
+	Sub MMDSelectFolder
+		Set objShell = CreateObject("Shell.Application")
+		Set objFolder = objShell.BrowseForFolder (0, "Select the folder where the modifier file is located :", (0))
+		If objFolder Is Nothing Then
+			MsgBox "Cancelled by user" 
+			'Self.Close
+		Else
+			Set objFolderItem = objFolder.Self 
+			MMDdataLocation = objFolderItem.Path
+			strHtml = "<td><Font color = Blue>" & MMDdataLocation & "</font></Br>"
+			MMDDataArea.InnerHtml = strHtml	
+			Call MMDClearListbox
+			Call MMDpopulateListBoxColumn(MMDdataLocation)
+		End If
+	End Sub
+	
+	'	Maintain Modifier Data
+	'	Clear list box for modifier file
+	
+	Sub MMDClearListbox
+    For Each objOption in MMDModifierDataBox.Options
+        objOption.RemoveNode
+    Next 
+	End Sub
+
+	'	Maintain Modifier File
+	'	sub called by MMDSelectFolder, insert empty line to each listbox and populate listbox with filename from folder selected
+	
+	Sub MMDpopulateListBoxColumn(MMDdataLocation)
+		If Run_MMDButton.Value = "" Then 
+			Window.Alert("Please select a folder.")
+			Exit Sub
+		End If
+		Dim objFolder, objOption, strFolder, strSubFolder
+		Set objFolder = objFSO.GetFolder(MMDdataLocation)
+		'Add empty line to the listboxes
+		Set objOption = Document.createElement("OPTION")
+		MMDModifierDataBox.Add(objOption)
+		For Each strFile In objFolder.Files
+			'Add Files to the listboxes
+			Set objOption = Document.createElement("OPTION")
+			objOption.Text = strFile.Name
+			objOption.Value = strFile.Name
+			'	if filename contains modifier, pre-select the filename
+			if instr(1,strFile.Name,"modifier",1) > 0 then
+				objOption.selected=true
+			end if
+			MMDModifierDataBox.Add(objOption)
+		Next
+	End Sub
+
+	'	Maintain Modifier Data
+	'	Validate required parameters and submit job
+	
+	Sub MMDSubmitJob
+		
+		If MMDdataLocation = "" Then 
+			Window.Alert("Please select a Modifier File Location.")
+			Exit Sub
+		End If
+		
+		xmodifierLocation=""""&MMDdataLocation&""""
+		
+		If MMDModifierDataBox.Value = "" Then 
+			Window.Alert("Please select a modifier File.")
+			Exit Sub
+		End If
+		
+		modifierFile=MMDModifierDataBox.Value
+		modifierFile=""""&modifierFile&""""
+		
+		if MMDloadType.Value = "X" then
+			Window.Alert("Please select a valid load type.")
+			Exit Sub
+		End If
+
+		logFn=""""&MMDdataLocation&"\load_modifiers.log"&""""
+				 
+		Set objShell=CreateObject("wscript.shell")  
+		shellStr="cmd /S /c "&""""&""""&currDir&"\run_load_modifier_dimension.bat"&""""&" "&xmodifierLocation&" "&modifierFile&" "&MMDloadType.Value&" "
+		shellStr=shellStr&" > "&logFn&""""
+		' Window.alert(shellStr)
+		Statwin.style.display="block"
+		Statbar.style.display="block"
+		ProgBar "Init", "Processing files...<br>"
+		objShell.Run shellStr,0,True
+		Call CheckLog
+		if logStatus = "ERROR" then
+			MsgBox "An error occurred while processing your request - Please contact Support"
+			Self.Close
+		End if
+		ProgBar "End", "dummyarg"
+		MsgBox "Finished" 
+		' Self.Close
+		Call resetForm
+	End Sub
+
+	'	************************************************************************************************************************
+	'	Archive Study Files
+	'	When Browse button is clicked, user will select the study files folder
+	
+	Sub ARCSelectFolder
+		Set objShell = CreateObject("Shell.Application")
+		Set objFolder = objShell.BrowseForFolder (0, "Select the folder where the study data is located :", (0))
+		If objFolder Is Nothing Then
+			MsgBox "Cancelled by user" 
+			'Self.Close
+		Else
+			Set objFolderItem = objFolder.Self 
+			ARCdataLocation = objFolderItem.Path
+			strHtml = "<td><Font color = Blue>" & ARCdataLocation & "</font></Br>"
+			ARCDataArea.InnerHtml = strHtml	
+		End If
+	End Sub
+	
+	'	************************************************************************************************************************
+	'	Archive Study Files
+	'	When Browse button is clicked, user will select the archive folder
+	
+	Sub ARCDSelectFolder
+		Set objShell = CreateObject("Shell.Application")
+		Set objFolder = objShell.BrowseForFolder (0, "Select the folder where the study data will be archived :", (0))
+		If objFolder Is Nothing Then
+			MsgBox "Cancelled by user" 
+			'Self.Close
+		Else
+			Set objFolderItem = objFolder.Self 
+			ARCDdataLocation = objFolderItem.Path
+			strHtml = "<td><Font color = Blue>" & ARCDdataLocation & "</font></Br>"
+			ARCDDataArea.InnerHtml = strHtml	
+		End If
+	End Sub
+	
+	'	Archive Study Files
+	'	Validate required parameters and submit job
+	
+	Sub ARCSubmitJob
+		
+		If ARCdataLocation = "" Then 
+			Window.Alert("Please select a Study File Location.")
+			Exit Sub
+		End If
+		
+		If ARCDdataLocation = "" Then 
+			Window.Alert("Please select an Archive Location.")
+			Exit Sub
+		End If
+		
+		ARCstudyId = UCase(mid(ARCdataLocation, InStrRev(ARCdataLocation,"\")+1))
+		xarchiveLogLoc = Replace(ARCdataLocation, ARCstudyId, "Archives\Logs\")
+		' Window.alert(xarchiveLogLoc)
+
+		logFn=""""&xarchiveLogLoc&"archive_"&ARCstudyID&".log"&""""
+		' Window.alert(logFn)
+				 
+		Set objShell=CreateObject("wscript.shell")  
+		shellStr="cmd /S /c "&""""&""""&currDir&"\run_archive_study_files.bat"&""""&" "&ARCstudyId&" > "&logFn&" "&""""
+		' Window.alert(shellStr)
+		Statwin.style.display="block"
+		Statbar.style.display="block"
+		ProgBar "Init", "Archiving files...<br>"
+		objShell.Run shellStr,0,True
+		Call CheckLog
+		if logStatus = "ERROR" then
+			MsgBox "An error occurred while processing your request - Please contact Support"
+			Self.Close
+		End if
+		ProgBar "End", "dummyarg"
+		MsgBox "Finished" 
+		' Self.Close
+		Call resetForm
+	End Sub
+	
+	
+	'	************************************************************************************************************************
+	'	Publish Study to Production
+	'	Validate required parameters and submit job
+	
+	Sub PUBSubmitJob
+		
+		If PUBstudyselect.Value = "" Then 
+			Window.Alert("Please select a Study.")
+			Exit Sub
+		End If
+		
+		PUBstudyId = PUBstudyselect.Value
+		
+		if PUBdataType.Options.Length = 0 then
+			Window.Alert("Please select a data type to Publish.")
+			Exit Sub
+		end if
+		
+		xPubdataType = ""
+		for i = 0 to (PUBdataType.Options.Length - 1)
+			If (PUBdataType.Options(i).Selected) then
+				if i=0 then
+					xPubdataType = PUBdataType.Options(i).Value
+				else
+					xPubdataType = xPubdataType&","&PUBdataType.Options(i).Value
+				end if
+			end if
+		Next
+		
+		xPubdataType = """"&xPubdataType&""""
+
+		logFn=""""&publishLogDir&"\publish_to_production_"&PUBstudyId&".log"&""""
+		' Window.alert(logFn)
+				 
+		Set objShell=CreateObject("wscript.shell")  
+		shellStr="cmd /S /c "&""""&""""&currDir&"\run_publish_study_to_production.bat"&""""&" "&PUBstudyId&" "&xPubdataType&" > "&logFn&" "&""""
+		' Window.alert(shellStr)
+		Statwin.style.display="block"
+		Statbar.style.display="block"
+		ProgBar "Init", "Publishing study...<br>"
+		objShell.Run shellStr,0,True
+		Call CheckLog
+		if logStatus = "ERROR" then
+			MsgBox "An error occurred while processing your request - Please contact Support"
+			Self.Close
+		End if
+		ProgBar "End", "dummyarg"
+		MsgBox "Finished" 
+		' Self.Close
+		Call resetForm
+	End Sub			
+
+	'	************************************************************************************************************************
+	'	Load Study Metadata
+	'	When Browse button is clicked, user will select study metadata folder, the name of the folder selected is displayed, and a subroutine
+	'	is called to populate the listboxe
+	
+	Sub METASelectFolder
+		Set objShell = CreateObject("Shell.Application")
+		Set objFolder = objShell.BrowseForFolder (0, "Select the folder where the study metadata file is located :", (0))
+		If objFolder Is Nothing Then
+			MsgBox "Cancelled by user" 
+			'Self.Close
+		Else
+			Set objFolderItem = objFolder.Self 
+			METAdataLocation = objFolderItem.Path
+			strHtml = "<td><Font color = Blue>" & METAdataLocation & "</font></Br>"
+			METADataArea.InnerHtml = strHtml	
+			Call METAClearListbox
+			Call METApopulateListBoxColumn(METAdataLocation)
+		End If
+	End Sub
+	
+	'	Load Study Metadata
+	'	Clear list box for study metadata file
+	
+	Sub METAClearListbox
+		For Each objOption in METAMappingDataBox.Options
+			objOption.RemoveNode
+		Next 
+	End Sub
+
+	'	Load Supplemental Files
+	'	sub called by METASelectFolder, insert empty line to each listbox and populate listbox with filename from folder selected
+	
+	Sub METApopulateListBoxColumn(METAdataLocation)
+		If Run_METAButton.Value = "" Then 
+			Window.Alert("Please select a folder.")
+			Exit Sub
+		End If
+		Dim objFolder, objOption, strFolder, strSubFolder
+		Set objFolder = objFSO.GetFolder(METAdataLocation)
+		'Add empty line to the listboxes
+		Set objOption = Document.createElement("OPTION")
+		METAmappingDataBox.Add(objOption)
+		For Each strFile In objFolder.Files
+			'Add Files to the listboxes
+			Set objOption = Document.createElement("OPTION")
+			objOption.Text = strFile.Name
+			objOption.Value = strFile.Name
+			'	if filename contains metadata, pre-select the filename
+			if instr(1,strFile.Name,"metadata",1) > 0 then
+				objOption.selected=true
+			end if
+			METAmappingDataBox.Add(objOption)
+		Next
+	End Sub
+
+	'	Load Study Metadata
+	'	Validate required parameters and submit job
+	
+	Sub METASubmitJob
+		
+		If METAdataLocation = "" Then 
+			Window.Alert("Please select a Study Metadata File Location.")
+			Exit Sub
+		End If
+		
+		xmetadataLocation=""""&METAdataLocation&""""
+		
+		If METAmappingDataBox.Value = "" Then 
+			Window.Alert("Please select a Study Metadata File.")
+			Exit Sub
+		End If
+		
+		metadataFile=METAmappingDataBox.Value
+		metadataFile=""""&metadataFile&""""
+
+		logFn=""""&METAdataLocation&"\load_study_metadata.log"&""""
+				 
+		Set objShell=CreateObject("wscript.shell")  
+		shellStr="cmd /S /c "&""""&""""&currDir&"\run_load_study_metadata.bat"&""""&" "&xmetadataLocation&" "&metadataFile&" "
+		shellStr=shellStr&" > "&logFn&""""
+		' Window.alert(shellStr)
+		Statwin.style.display="block"
+		Statbar.style.display="block"
+		ProgBar "Init", "Processing files...<br>"
+		objShell.Run shellStr,0,True
+		Call CheckLog
+		if logStatus = "ERROR" then
+			MsgBox "An error occurred while processing your request - Please contact Support"
+			Self.Close
+		End if
+		ProgBar "End", "dummyarg"
+		MsgBox "Finished" 
+		' Self.Close
+		Call resetForm
+	End Sub
+	
+	'	************************************************************************************************************************
+	'	Load Supplemental Files
+	'	When Browse button is clicked, user will select subject-sample folder, the name of the folder selected is displayed, and a subroutine
+	'	is called to populate the listboxe
+	
+	Sub ADDLSelectFolder
+		Set objShell = CreateObject("Shell.Application")
+		Set objFolder = objShell.BrowseForFolder (0, "Select the folder where the subject-sample file is located :", (0))
+		If objFolder Is Nothing Then
+			MsgBox "Cancelled by user" 
+			'Self.Close
+		Else
+			Set objFolderItem = objFolder.Self 
+			ADDLdataLocation = objFolderItem.Path
+			strHtml = "<td><Font color = Blue>" & ADDLdataLocation & "</font></Br>"
+			ADDLDataArea.InnerHtml = strHtml	
+			Call ADDLClearListbox
+			Call ADDLpopulateListBoxColumn(ADDLdataLocation)
+		End If
+	End Sub
+	
+	'	Load Supplemental Files
+	'	Clear list box for subject-sample file
+	
+	Sub ADDLClearListbox
+		For Each objOption in ADDLMappingDataBox.Options
+			objOption.RemoveNode
+		Next 
+	End Sub
+
+	'	Load Supplemental Files
+	'	sub called by ADDLSelectFolder, insert empty line to each listbox and populate listbox with filename from folder selected
+	
+	Sub ADDLpopulateListBoxColumn(ADDLdataLocation)
+		If Run_ADDLButton.Value = "" Then 
+			Window.Alert("Please select a folder.")
+			Exit Sub
+		End If
+		Dim objFolder, objOption, strFolder, strSubFolder
+		Set objFolder = objFSO.GetFolder(ADDLdataLocation)
+		'Add empty line to the listboxes
+		Set objOption = Document.createElement("OPTION")
+		AddlmappingDataBox.Add(objOption)
+		For Each strFile In objFolder.Files
+			'Add Files to the listboxes
+			Set objOption = Document.createElement("OPTION")
+			objOption.Text = strFile.Name
+			objOption.Value = strFile.Name
+			'	if filename contains subject and sample, pre-select the filename
+			if instr(1,strFile.Name,"subject",1) > 0  and instr(1,strFile.Name,"sample") > 0 then
+				objOption.selected=true
+			end if
+			AddlmappingDataBox.Add(objOption)
+		Next
+	End Sub
+
+	'	Load Additional Data
+	'	Validate required parameters and submit job
+	
+	Sub ADDLSubmitJob
+		
+		If ADDLdataLocation = "" Then 
+			Window.Alert("Please select a Subject-Sample Mapping File Location.")
+			Exit Sub
+		End If
+		
+		xmappingLocation=""""&ADDLdataLocation&""""
+		
+		If ADDLmappingDataBox.Value = "" Then 
+			Window.Alert("Please select a Subject-Sample mapping File.")
+			Exit Sub
+		End If
+		
+		mappingFile=ADDLmappingDataBox.Value
+		mappingFile=""""&mappingFile&""""
+
+		logFn=""""&ADDLdataLocation&"\link_addl_data.log"&""""
+				 
+		Set objShell=CreateObject("wscript.shell")  
+		shellStr="cmd /S /c "&""""&""""&currDir&"\run_link_addl_data.bat"&""""&" "&xmappingLocation&" "&mappingFile&" "
+		shellStr=shellStr&" > "&logFn&""""
+		Window.alert(shellStr)
+		Statwin.style.display="block"
+		Statbar.style.display="block"
+		ProgBar "Init", "Processing files...<br>"
+		objShell.Run shellStr,0,True
+		Call CheckLog
+		if logStatus = "ERROR" then
+			MsgBox "An error occurred while processing your request - Please contact Support"
+			Self.Close
+		End if
+		ProgBar "End", "dummyarg"
+		MsgBox "Finished" 
+		' Self.Close
+		Call resetForm
+	End Sub
+	
+	'	************************************************************************************************************************
+	'	Manage security for study
+	'	Validate required parameters and submit job
+	
+	Sub SECShowStudies
+	
+		if SECenv.Value = "X" then
+			Window.Alert("Select an Environment")
+			Exit Sub
+		End if
+
+		SECstudyMsg.style.display="block"
+		
+		'	Get study_id and study_name from i2b2
+		
+		logFn=""""&currDir&"\get_study_names.log"&""""
+		Set objShell=CreateObject("wscript.shell")  
+		shellStr="cmd /s /c "&""""&""""&currDir&"\run_get_study_names.bat"&""""&" "&""""&currDir&""""&" > "&logFn&""""
+		objShell.Run shellStr,0,True
+		Call CheckLog
+		if logStatus = "ERROR" then
+			MsgBox "Unable to retrieve system information - Please contact Support"
+			Self.Close
+		End if
+					
+		checkFile = currDir&"\study_names.txt"
+		if ( not objFSO.FileExists(checkFile)) then
+			Window.Alert(checkFile&" does not exist.  Please contact Support.")
+			Self.Close
+		End if
+
+		For Each objOption in SECstudyselect.Options
+			objOption.RemoveNode
+		Next 
+		
+		'	Add empty line to top node listbox
+		
+		Set objOption = Document.createElement("OPTION")
+		SECstudyselect.Add(objOption)
+		Set objFSO = CreateObject("Scripting.FileSystemObject")  
+
+		'	Read study_names.txt and add to list box
+		studyNamesFile = currDir&"\study_names.txt"
+		Set objFile = objFSO.OpenTextFile(studyNamesFile)       
+ 
+		Do Until objFile.AtEndOFStream
+			studyIdName = objFile.ReadLine
+			'Window.Alert(studyIdName)
+			studyArray = Split(studyIdName, vbTab)
+			studyId = studyArray(0)
+			studyPath = studyArray(1)
+			studyName = studyArray(2)
+			studyEnv = studyArray(3)
+			'studyId = Mid(studyIdName,1,instr(studyIdName,vbTab)-1)
+			'studyName = Mid(studyIdName,instr(studyIdName,vbTab)+1)
+			'Window.alert("studyName: "&studyName)
+			if SECenv.Value = "DEV" then
+				if studyEnv = "D" then
+					Set objOption = Document.createElement("OPTION")
+					objOption.Text = studyName
+					objOption.Value = studyId
+					SECstudyselect.Add(objOption)
+				End if
+			End if
+		Loop
+ 
+		objFile.Close 
+		
+		for i = 0 to (SECType.Options.Length - 1)
+			SECType.Options(i).Selected = false
+		Next
+		
+		SECstudyMsg.style.display="none"
+		SECselectArea.style.display = "block"
+		
+	End Sub
+	
+	Sub SECSelectFolder
+		Set objShell = CreateObject("Shell.Application")
+		Set objFolder = objShell.BrowseForFolder (0, "Select the folder where the log file(s) will be placed :", (0))
+		If objFolder Is Nothing Then
+			MsgBox "Cancelled by user" 
+			'Self.Close
+		Else
+			Set objFolderItem = objFolder.Self 
+			LogLocation = objFolderItem.Path
+			strHtml = "<td><Font color = Blue>" & "Logs(s) will be placed in " & LogLocation & "</font></Br>"
+			SECDataArea.InnerHtml = strHtml	
+		End If
+	End Sub
+	
+	Sub SECSubmitJob
+		
+		If SECstudyselect.Value = "" Then 
+			Window.Alert("Please select a Study.")
+			Exit Sub
+		End If
+		
+		SECstudyId = """"&SECstudyselect.Value&""""
+		
+		If SECType.Value = "X" Then 
+			Window.Alert("Please select a Security Action.")
+			Exit Sub
+		End If
+		
+		xSECType = SECType.Value
+		
+		If SECenv.Value = "X" Then 
+			Window.Alert("Please select an Environment.")
+			Exit Sub
+		End If
+		
+		xSECenv = SECenv.Value
+		
+		If LogLocation = "" Then 
+			Window.Alert("Please select a folder for the log file(s).")
+			Exit Sub
+		End If
+		
+		xLogLocation=""""&LogLocation&""""
+
+		logFn=""""&LogLocation&"\manage_security_for_study_job.log"&""""
+		' Window.alert(logFn)
+				 
+		Set objShell=CreateObject("wscript.shell")  
+		shellStr="cmd /S /c "&""""&""""&currDir&"\run_manage_security_for_study.bat"&""""&" "&SECstudyId&" "&xSECType&" "&xSECenv&" "&xLogLocation&" security > "&logFn&" "&""""
+		' Window.alert(shellStr)
+		Statwin.style.display="block"
+		Statbar.style.display="block"
+		ProgBar "Init", "Update security for study...<br>"
+		objShell.Run shellStr,0,True
+		Call CheckLog
+		if logStatus = "ERROR" then
+			MsgBox "An error occurred while processing your request - Please contact Support"
+			Self.Close
+		End if
+		ProgBar "End", "dummyarg"
+		MsgBox "Finished" 
+		' Self.Close
+		Call resetForm
+	End Sub		
+
+	'	************************************************************************************************************************
+	'	Remove study from tranSMART
+	'	Validate required parameters and submit job
+	
+	Sub RMVShowStudies
+	
+		if RMVenv.Value = "X" then
+			Window.Alert("Select an Environment")
+			Exit Sub
+		End if
+		
+		RMVstudyMsg.style.display="block"
+		
+		'	Get study_id and study_name from i2b2
+		
+		logFn=""""&currDir&"\get_study_names.log"&""""
+		Set objShell=CreateObject("wscript.shell")  
+		shellStr="cmd /s /c "&""""&""""&currDir&"\run_get_study_names.bat"&""""&" "&""""&currDir&""""&" > "&logFn&""""
+		objShell.Run shellStr,0,True
+		Call CheckLog
+		if logStatus = "ERROR" then
+			MsgBox "Unable to retrieve system information - Please contact Support"
+			Self.Close
+		End if
+					
+		checkFile = currDir&"\study_names.txt"
+		if ( not objFSO.FileExists(checkFile)) then
+			Window.Alert(checkFile&" does not exist.  Please contact Support.")
+			Self.Close
+		End if
+
+		For Each objOption in RMVstudyselect.Options
+			objOption.RemoveNode
+		Next 
+		
+		'	Add empty line to top node listbox
+		
+		Set objOption = Document.createElement("OPTION")
+		RMVstudyselect.Add(objOption)
+		Set objFSO = CreateObject("Scripting.FileSystemObject")  
+
+		'	Read study_names.txt and add to list box
+		studyNamesFile = currDir&"\study_names.txt"
+		Set objFile = objFSO.OpenTextFile(studyNamesFile)       
+ 
+		Do Until objFile.AtEndOFStream
+			studyIdName = objFile.ReadLine
+			'Window.Alert(studyIdName)
+			studyArray = Split(studyIdName, vbTab)
+			studyId = studyArray(0)
+			studyPath = studyArray(1)
+			studyName = studyArray(2)
+			studyEnv = studyArray(3)
+			'studyId = Mid(studyIdName,1,instr(studyIdName,vbTab)-1)
+			'studyName = Mid(studyIdName,instr(studyIdName,vbTab)+1)
+			'Window.alert("studyName: "&studyName)
+			if RMVenv.Value = "DEV" then
+				if studyEnv = "D" then
+					Set objOption = Document.createElement("OPTION")
+					objOption.Text = studyName
+					objOption.Value = studyId
+					RMVstudyselect.Add(objOption)
+				End if
+			End if
+		Loop
+ 
+		objFile.Close 
+		
+		RMVstudyMsg.style.display="none"
+		RMVselectArea.style.display = "block"
+
+	End Sub
+	
+	Sub RMVSelectFolder
+		Set objShell = CreateObject("Shell.Application")
+		Set objFolder = objShell.BrowseForFolder (0, "Select the folder where the log file(s) will be placed :", (0))
+		If objFolder Is Nothing Then
+			MsgBox "Cancelled by user" 
+			'Self.Close
+		Else
+			Set objFolderItem = objFolder.Self 
+			LogLocation = objFolderItem.Path
+			strHtml = "<td><Font color = Blue>" & "Logs(s) will be placed in " & LogLocation & "</font></Br>"
+			RMVDataArea.InnerHtml = strHtml	
+		End If
+	End Sub
+	
+	Sub RMVSubmitJob
+		
+		If RMVstudyselect.Value = "" Then 
+			Window.Alert("Please select a Study.")
+			Exit Sub
+		End If
+		
+		RMVstudyId = """"&RMVstudyselect.Value&""""
+		
+		If RMVenv.Value = "X" Then 
+			Window.Alert("Please select an Environment.")
+			Exit Sub
+		End If
+		
+		xRMVenv = RMVenv.Value
+		
+		If LogLocation = "" Then 
+			Window.Alert("Please select a folder for the log file(s).")
+			Exit Sub
+		End If
+		
+		xLogLocation=""""&LogLocation&""""
+
+		logFn=""""&LogLocation&"\remove_study_job.log"&""""
+		' Window.alert(logFn)
+				 
+		Set objShell=CreateObject("wscript.shell")  	
+		shellStr="cmd /S /c "&""""&""""&currDir&"\run_remove_study.bat"&""""&" "&RMVstudyId&" "&xRMVenv&" "&xLogLocation&" remove_study > "&logFn&" "&""""
+		Window.alert(shellStr)
+		Statwin.style.display="block"
+		Statbar.style.display="block"
+		ProgBar "Init", "Removing study...<br>"
+		objShell.Run shellStr,0,True
+		Call CheckLog
+		if logStatus = "ERROR" then
+			MsgBox "An error occurred while processing your request - Please contact Support"
+			Self.Close
+		End if
+		ProgBar "End", "dummyarg"
+		MsgBox "Finished" 
+		' Self.Close
+		Call resetForm
+	End Sub	
+	
+	'	************************************************************************************************************************
+	'	Load Cohort Analysis
+	'	When Browse button is clicked, user will select modifier file folder, the name of the folder selected is displayed, and a subroutine
+	'	is called to populate the listboxe
+	
+	Sub CHRTSelectFolder
+		Set objShell = CreateObject("Shell.Application")
+		Set objFolder = objShell.BrowseForFolder (0, "Select the folder where the analysis files are located :", (0))
+		If objFolder Is Nothing Then
+			MsgBox "Cancelled by user" 
+			'Self.Close
+		Else
+			Set objFolderItem = objFolder.Self 
+			CHRTdataLocation = objFolderItem.Path
+			strHtml = "<td><Font color = Blue>" & CHRTdataLocation & "</font></Br>"
+			CHRTDataArea.InnerHtml = strHtml	
+			Call CHRTClearListbox
+			Call CHRTpopulateListBoxColumn(CHRTdataLocation)
+		End If
+	End Sub
+	
+	'	Load Cohort Analysis
+	'	Clear list boxes for cohort analysis files
+	
+	Sub CHRTClearListbox
+    For Each objOption in CHRTanalysisFileBox.Options
+        objOption.RemoveNode
+    Next 
+	
+	For Each objOption in CHRTanalysisDataBox.Options
+        objOption.RemoveNode
+    Next
+	
+	For Each objOption in CHRTsamplesFileBox.Options
+        objOption.RemoveNode
+    Next
+	
+	For Each objOption in CHRTcohortsFileBox.Options
+        objOption.RemoveNode
+    Next
+	End Sub
+
+	'	Load Cohort Analysis
+	'	sub called by CHRTSelectFolder, insert empty line to each listbox and populate listbox with filename from folder selected
+	
+	Sub CHRTpopulateListBoxColumn(CHRTdataLocation)
+		If Run_CHRTButton.Value = "" Then 
+			Window.Alert("Please select a folder.")
+			Exit Sub
+		End If
+		Dim objFolder, objOption, strFolder, strSubFolder
+		Set objFolder = objFSO.GetFolder(CHRTdataLocation)
+		'Add empty line to the listboxes
+		Set objOption = Document.createElement("OPTION")
+		CHRTanalysisDataBox.Add(objOption)
+		Set objOption = Document.createElement("OPTION")
+		CHRTanalysisFileBox.Add(objOption)
+		Set objOption = Document.createElement("OPTION")
+		CHRTcohortsFileBox.Add(objOption)
+		Set objOption = Document.createElement("OPTION")
+		CHRTsamplesFileBox.Add(objOption)
+		For Each strFile In objFolder.Files
+			'Add Files to the listboxes
+			Set objOption = Document.createElement("OPTION")
+			objOption.Text = strFile.Name
+			objOption.Value = strFile.Name
+			CHRTanalysisDataBox.Add(objOption)
+			Set objOption = Document.createElement("OPTION")
+			objOption.Text = strFile.Name
+			objOption.Value = strFile.Name
+			CHRTanalysisFileBox.Add(objOption)
+			Set objOption = Document.createElement("OPTION")
+			objOption.Text = strFile.Name
+			objOption.Value = strFile.Name
+			CHRTsamplesFileBox.Add(objOption)
+			Set objOption = Document.createElement("OPTION")
+			objOption.Text = strFile.Name
+			objOption.Value = strFile.Name
+			CHRTcohortsFileBox.Add(objOption)
+		Next
+	End Sub
+
+	'	load Cohort Analysis
+	'	Validate required parameters and submit job
+	
+	Sub CHRTSubmitJob
+		
+		If CHRTdataLocation = "" Then 
+			Window.Alert("Please select a cohort analysis file Location.")
+			Exit Sub
+		End If
+		
+		xcohortLocation=""""&CHRTdataLocation&""""
+		
+		If CHRTanalysisDataBox.Value = "" Then 
+			Window.Alert("Please select an Analysis Data File.")
+			Exit Sub
+		End If
+		
+		If CHRTanalysisFileBox.Value = "" Then 
+			Window.Alert("Please select an Analysis File.")
+			Exit Sub
+		End If
+		
+		If CHRTcohortsFileBox.Value = "" Then 
+			Window.Alert("Please select an Cohorts File.")
+			Exit Sub
+		End If
+		
+		If CHRTsamplesFileBox.Value = "" Then 
+			Window.Alert("Please select an Samples File.")
+			Exit Sub
+		End If
+		
+		analysisFile=CHRTanalysisFileBox.Value
+		analysisFile=""""&analysisFile&""""
+		
+		analysisData=CHRTanalysisDataBox.Value
+		analysisData=""""&analysisData&""""
+		
+		samplesFile=CHRTsamplesFileBox.Value
+		samplesFile=""""&samplesFile&""""
+		
+		cohortsFile=CHRTcohortsFileBox.Value
+		cohortsFile=""""&cohortsFile&""""
+		
+		If CHRTstudyId.Value = "" then
+			Window.Alert("Please enter a Study Id.")
+			Exit Sub
+		End If
+		
+		If CHRTcategoryDisplay.Value = "" then
+			Window.Alert("Please enter a Study Category Display value.")
+			Exit Sub
+		End If
+		
+		If CHRTdataCategory.Value = "" then
+			Window.Alert("Please enter a Data Category value.")
+			Exit Sub
+		End If
+
+		logFn=""""&CHRTdataLocation&"\load_cohort_analysis.log"&""""
+				 
+		Set objShell=CreateObject("wscript.shell")  
+		shellStr="cmd /S /c "&""""&""""&currDir&"\run_load_cohort_analysis.bat"&""""&" "&xcohortLocation&" "&analysisFile&" "
+		shellStr=shellStr&analysisData&" "&samplesFile&" "&cohortsFile&" "
+		shellStr=shellStr&CHRTstudyId.Value&" "&CHRTcategoryDisplay.Value&" "&CHRTdataCategory.Value&" "
+		shellStr=shellStr&" > "&logFn&""""
+		Window.alert(shellStr)
+		Statwin.style.display="block"
+		Statbar.style.display="block"
+		ProgBar "Init", "Processing files...<br>"
+		' objShell.Run shellStr,0,True
+		' Call CheckLog
+		if logStatus = "ERROR" then
+			MsgBox "An error occurred while processing your request - Please contact Support"
+			Self.Close
+		End if
+		ProgBar "End", "dummyarg"
+		MsgBox "Finished" 
+		' Self.Close
+		Call resetForm
+	End Sub
+	
+	'	************************************************************************************************************************
+	'	Load Recomination Rate Data
+	'	When Browse button is clicked, user will select recombination rate file folder, the name of the folder selected is displayed, and a subroutine
+	'	is called to populate the listboxe
+	
+	Sub RRATESelectFolder
+		Set objShell = CreateObject("Shell.Application")
+		Set objFolder = objShell.BrowseForFolder (0, "Select the folder where the Recombination Rate file is located :", (0))
+		If objFolder Is Nothing Then
+			MsgBox "Cancelled by user" 
+			'Self.Close
+		Else
+			Set objFolderItem = objFolder.Self 
+			RRATEdataLocation = objFolderItem.Path
+			strHtml = "<td><Font color = Blue>" & RRATEdataLocation & "</font></Br>"
+			RRATEDataArea.InnerHtml = strHtml	
+		End If
+	End Sub
+
+	'	Load Recombination Rate data
+	'	Validate required parameters and submit job
+	
+	Sub RRATESubmitJob
+		
+		If RRATEdataLocation = "" Then 
+			Window.Alert("Please select a Recombination Rate File Location.")
+			Exit Sub
+		End If
+		
+		xrrateLocation=""""&RRATEdataLocation&""""
+		
+		if RRATEprefix.Value = "" then
+			Window.Alert("Please enter the prefix of the Recombination Rate data files.")
+			Exit Sub
+		End If
+		
+		okPrefix="N"
+		Dim objFolder, objOption, strFolder, strSubFolder
+		Set objFolder = objFSO.GetFolder(RRATEdataLocation)
+		For Each strFile In objFolder.Files
+			if instr(1,strFile.Name,RRATEprefix.Value,1) > 0 then
+				okPrefix="Y"
+				Exit For
+			End iF
+		Next
+		
+		If okPrefix = "N" Then 
+			Window.Alert("No files found with prefix entered.  Please enter a valid Recombination Rate file prefix.")
+			Exit Sub
+		End If
+
+		logFn=""""&RRATEdataLocation&"\load_recombination_rate.log"&""""
+				 
+		Set objShell=CreateObject("wscript.shell")  
+		shellStr="cmd /S /c "&""""&""""&currDir&"\run_load_recombination_rates.bat"&""""&" "&xrrateLocation&" "&RRATEPrefix.Value&" "
+		shellStr=shellStr&" > "&logFn&""""
+		' Window.alert(shellStr)
+		Statwin.style.display="block"
+		Statbar.style.display="block"
+		ProgBar "Init", "Processing files...<br>"
+		objShell.Run shellStr,0,True
+		Call CheckLog
+		if logStatus = "ERROR" then
+			MsgBox "An error occurred while processing your request - Please contact Support"
+			Self.Close
+		End if
+		ProgBar "End", "dummyarg"
+		MsgBox "Finished" 
+		' Self.Close
+		Call resetForm
+	End Sub
+	
+	'	************************************************************************************************************************
+	'	Load Regulome Score Data
+	'	When Browse button is clicked, user will select regulome score file folder, the name of the folder selected is displayed, and a subroutine
+	'	is called to populate the listboxe
+	
+	Sub REGSCORESelectFolder
+		Set objShell = CreateObject("Shell.Application")
+		Set objFolder = objShell.BrowseForFolder (0, "Select the folder where the Regulome Score file is located :", (0))
+		If objFolder Is Nothing Then
+			MsgBox "Cancelled by user" 
+			'Self.Close
+		Else
+			Set objFolderItem = objFolder.Self 
+			REGSCOREdataLocation = objFolderItem.Path
+			strHtml = "<td><Font color = Blue>" & REGSCOREdataLocation & "</font></Br>"
+			REGSCOREDataArea.InnerHtml = strHtml	
+		End If
+	End Sub
+
+	'	Load Regulome Score Data
+	'	Validate required parameters and submit job
+	
+	Sub REGSCORESubmitJob
+		
+		If REGSCOREdataLocation = "" Then 
+			Window.Alert("Please select a Regulome Score File Location.")
+			Exit Sub
+		End If
+		
+		xregscoreLocation=""""&REGSCOREdataLocation&""""
+		
+		if REGSCOREprefix.Value = "" then
+			Window.Alert("Please enter the prefix of the Regulome Score data files.")
+			Exit Sub
+		End If
+		
+		okPrefix="N"
+		Dim objFolder, objOption, strFolder, strSubFolder
+		Set objFolder = objFSO.GetFolder(REGSCOREdataLocation)
+		For Each strFile In objFolder.Files
+			If instr(1,strFile.Name,REGSCOREprefix.Value,1) > 0 then 
+				okPrefix="Y"
+				Exit For
+			End iF
+		Next
+		
+		If okPrefix = "N" Then 
+			Window.Alert("No files found with prefix entered.  Please enter a valid Regulome Score file prefix.")
+			Exit Sub
+		End If
+
+		logFn=""""&REGSCOREdataLocation&"\load_regulome_score.log"&""""
+				 
+		Set objShell=CreateObject("wscript.shell")  
+		shellStr="cmd /S /c "&""""&""""&currDir&"\run_load_regulome_score.bat"&""""&" "&xregscoreLocation&" "&REGSCOREprefix.Value&" "
+		shellStr=shellStr&" > "&logFn&""""
+		' Window.alert(shellStr)
+		Statwin.style.display="block"
+		Statbar.style.display="block"
+		ProgBar "Init", "Processing files...<br>"
+		objShell.Run shellStr,0,True
+		Call CheckLog
+		if logStatus = "ERROR" then
+			MsgBox "An error occurred while processing your request - Please contact Support"
+			Self.Close
+		End if
+		ProgBar "End", "dummyarg"
+		MsgBox "Finished" 
+		' Self.Close
+		Call resetForm
+	End Sub
+		
+	'	************************************************************************************************************************
+	'	Check log file for errors
+	
+	Sub CheckLog
+	
+		logStatus = "ERROR"
+		
+		'	Open file specified in logFn 
+		
+		logFn = replace(logFn,"""","")
+		' Window.Alert(logFn)
+		Set objFSO = CreateObject("Scripting.FileSystemObject")  
+		Set objFile = objFSO.OpenTextFile(logFn)       
+ 
+		'	Read log file and check if ERROR present, if yes, exit sub
+		
+		Do Until objFile.AtEndOFStream
+			logStr = objFile.ReadLine
+			if instr(logStr,"ERROR") > 0 then
+				objFile.Close
+				Exit Sub
+			end if
+		Loop
+ 
+		logStatus = "OK"
+		objFile.Close
+		
+	End Sub
+		
+	</script>
+	
+	<body bgcolor="white">
+	<img src="RecomByD.png" alt="RbD" width="125" height="32"></p>
+	<!-- Buttons to select operations -->
+	<Div id="topArea" style="display:none" Align="Center">
+	<table border="1" cellpadding="10">
+	<tr>
+	<td colspan="4">Clinical Data Loading</td>
+	</tr>
+	<tr>
+	<td><input type="button" name="runCCD" id="runCCD" Style="Width:200px;" value="Check Clinical Data Curation" onclick="showCCD"></td>
+	<td><input type="button" name="runLSO" id="runLSO" Style="Width:200px;" value="Load Std Output Files" onclick="showLSO"></td>
+	<td><input type="button" name="runLCD" id="runLCD" Style="Width:200px;" value="Load Clinical Data" onclick="showLCD"></td>
+	<td><input type="button" Style="display:none"</td>
+	</tr>
+	<tr>
+	<td colspan="4">Analyzed Data Loading</td>
+	</tr>
+	<tr>
+	<td><input type="button" name="runCHRT" id="runCHRT" Style="Width:200px;" value="Load Cohort Analysis" onclick="showCHRT"></td>
+	<td><input type="button" Style="display:none"</td>
+	<td><input type="button" Style="display:none"</td>
+	<td><input type="button" Style="display:none"</td>
+	</tr>
+	<tr>
+	<td colspan="4">Metadata Management</td>
+	</tr>
+	<tr>
+	<td><input type="button" name="runMETA" id="runMETA" Style="Width:200px;" value="Load Study Metadata" onclick="showMETA"></td>
+	<td><input type="button" name="runADDL" id="runADDL" Style="Width:200px;" value="Link Supplemental Files" onclick="showADDL"></td>
+	<td><input type="button" name="runMMD" id="runMMD" Style="Width:200px;" value="Maintain Modifier Data" onclick="showMMD"></td>
+	<td><input type="button" Style="display:none"</td>
+	</tr>
+	<tr>
+	<td colspan="4">Reference Data Management</td>
+	</tr>
+	<tr>
+	<td><input type="button" name="runRRATE" id="runRRATE" Style="Width:200px;" value="Load Recombination Rate Data" onclick="showRRATE"></td>
+	<td><input type="button" name="runREGSCORE" id="runREGSCORE" Style="Width:200px;" value="Load Regulome Score Data" onclick="showREGSCORE"></td>
+	<td><input type="button" Style="display:none"</td>
+	<td><input type="button" Style="display:none"</td>
+	</tr>
+	<tr>
+	<td colspan="4">Study Maintenance</td>
+	</tr>
+	<tr>
+	<td><input type="button" name="runSEC" id="runSEC" Style="Width:200px;" value="Manage Security for Study" onclick="showSEC"></td>
+	<td><input type="button" name="runPUB" id="runPUB" Style="Width:200px;" value="Publish Study to Production" onclick="showPUB"></td>
+	<td><input type="button" name="runARC" id="runARC" Style="Width:200px;" value="Archive Data for Study" onclick="showARC"></td>
+	<td><input type="button" name="runRMV" id="runRMV" Style="Width:200px;" value="Remove Study from tranSMART" onclick="showRMV"></td>
+	</tr>
+	</table>
+	</Div>
+	<!-- Curate Clinical Data Selections -->
+		<DIV Id = "CCDDiv" style="display:none" Align="Center">
+		<p>Check Clinical Data Curation</p>
+		<p>
+		<p>Enter Study Id: <input type="text" name="CCDstudyId" Size="30" id="CCDstudyId">&nbsp&nbspOnly numbers, letters, and a dash are allowed
+		<p><input Type = "Button" Value = "Browse For Data Location Folder" Name = "Run_CCDButton" onClick = "CCDSelectFolder"><p>
+		<Span Id = "CCDDataArea"></Span>
+		<p>
+		<p>Select Column Mapping File: 
+		<select required name="ColumnMapBox" id="CCDColumnMapBox"></select>
+		<p>Select Word Mapping File: 
+		<select required name="WordMapBox" id="CCDWordMapBox"></select>
+		<p>Select Record Exclusion File: 
+		<select required name="RecordExclusionBox" id="CCDRecordExclusionBox"></select>
+		<p><p><p><input type="button" name="CCDbtnSubmit" id="CCDbtnSubmit" Style="Width:80px;" value="Submit" onclick="CCDSubmitJob">
+		<Span Id = "CCDoutputArea"></Span>
+		</DIV>
+	<!-- Load Std Output Selections -->
+		<DIV Id = "LSODiv" style="display:none" Align="Center">
+		<p>Load Clinical Data from Standard Output Files</p>
+		<p>
+		<p>Enter Study Id: <input type="text" name="LSOstudyId" Size="30" id="LSOstudyId">
+		<p>
+		<p><input Type = "Button" Value = "Browse For Standard Output files location" Name = "Run_LSOButton" onClick = "LSOSelectFolder"><p>
+		<Span Id = "LSOdataArea"></Span>
+		<Span Id = "LSOstudyIdmsg"></Span>
+		<p>Select the top node for the study: 
+		<select required name="LSOtopNodeselect" id="LSOtopNodeselect"></select>
+		<p>If a new top node is needed, enter the Top Node: <input type="text" name="LSOtopNodetxt" Size="60" id="LSOtopNode">&nbsp&nbspOnly numbers, letters, dash or space allowed
+		<p>The top node is the name of the folder in which the study will be placed in Dataset Explorer.</p>
+		<p>
+		<p>Enter Study Name: <input type="text" name="LSOstudyName" Size="30" id="LSOstudyName">&nbsp&nbspOnly numbers, letters, dash or underscore allowed
+		<p>This is the name that will be displayed in Dataset Explorer.</p>
+		<p>
+		<Span Id = "LSOsfullTopNodemsg"></Span>
+		<p>Security Required:
+		<select size="1" name="LSOsecurityRequired">
+		<option value="X"> </option>		
+		<option value="N">No</option>
+		<option value="Y">Yes</option>
+		</select>
+		<p><p><p><input type="button" name="LSObtnSubmit" id="LSObtnSubmit" Style="Width:80px;" value="Submit" onclick="LSOSubmitJob">
+		</DIV> 
+		<DIV Id = "LCDDiv" style="display:none" Align="Center">
+	<!-- Start Load Clinical Data Selections -->	
+		<p>Load Clinical Data</p>
+		<p>
+		<p>Enter Study Id: <input type="text" name="LCDstudyId" Size="30" id="LCDstudyId">&nbsp&nbspOnly numbers, letters, and a dash are allowed
+		<p><input Type = "Button" Value = "Browse For Data Location Folder" Name = "Run_LCDButton" onClick = "LCDSelectFolder"><p>
+		<Span Id = "LCDDataArea"></Span>
+		<p>
+		<p>Select the top node for the study: 
+		<select required name="LCDtopNodeselect" id="LCDtopNodeselect"></select>
+		<p>If a new top node is needed, enter the Top Node: <input type="text" name="LCDtopNodetxt" Size="60" id="LCDtopNode">&nbsp&nbspOnly numbers, letters, dash or space allowed
+		<p>The top node is the name of the folder in which the study will be placed in Dataset Explorer.</p>
+		<p>
+		<p>Enter Study Name: <input type="text" name="LCDstudyName" Size="30" id="LCDstudyName">&nbsp&nbspOnly numbers, letters, dash or underscore allowed
+		<p>This is the name that will be displayed in Dataset Explorer.</p>
+		<p>
+		<Span Id = "LCDsfullTopNodemsg"></Span>
+		<p>
+		<p>Select Column Mapping File: 
+		<select required name="ColumnMapBox" id="LCDColumnMapBox"></select>
+		<p>Select Word Mapping File: 
+		<select required name="WordMapBox" id="LCDWordMapBox"></select>
+		<p>Select Record Exclusion File: 
+		<select required name="RecordExclusionBox" id="LCDRecordExclusionBox"></select>
+		<p>
+		<p>Security Required:
+		<select size="1" name="LCDsecurityRequired">
+		<option value="X"> </option>		
+		<option value="N">No</option>
+		<option value="Y">Yes</option>
+		</select>
+		<p><p><p><input type="button" name="LCDbtnSubmit" id="LCDbtnSubmit" Style="Width:80px;" value="Submit" onclick="LCDSubmitJob">
+		<Span Id = "LCDoutputArea"></Span>
+		</DIV>
+	<!-- Start Modifier Data Selections -->
+		<DIV Id = "MMDDiv" style="display:none" Align="Center">
+		<p>Maintain Modifier Data</p>
+		<p>
+		<p><input Type = "Button" Value = "Browse For Modifier Folder" Name = "Run_MMDButton" onClick = "MMDSelectFolder"><p>
+		<Span Id = "MMDDataArea"></Span>
+		<p>Select Modifier File: 
+		<select required name="ModifierDataBox" id="MMDModifierDataBox"></select>
+		<p>
+		<p>Select load type:
+		<select size="1" name="MMDloadType">
+		<option value="X"> </option>		
+		<option value="I">Add new or Change existing modifier data</option>
+		<option value="F">Reload all modifier data</option>
+		</select>
+		<p><input type="button" name="MMDbtnSubmit" id="MMDbtnSubmit" Style="Width:80px;" value="Submit" onclick="MMDSubmitJob">
+		<p>
+		</DIV>
+	<!-- Start Archive Study Data Selections -->
+		<DIV Id = "ARCDiv" style="display:none" Align="Center">
+		<p>Archive Study Files</p>
+		<p>
+		<p>Enter Study Id: <input type="text" name="ARCstudyId" Size="30" id="ARCstudyId">
+		<p><input Type = "Button" Value = "Browse For Study Folder" Name = "Run_ARCButton" onClick = "ARCSelectFolder"><p>
+		<Span Id = "ARCDataArea"></Span>
+		<p><input Type = "Button" Value = "Browse For Archive Folder" Name = "Run_ARCDButton" onClick = "ARCDSelectFolder"><p>
+		<Span Id = "ARCDDataArea"></Span>
+		<p><input type="button" name="ARCbtnSubmit" id="ARCbtnSubmit" Style="Width:80px;" value="Submit" onclick="ARCSubmitJob">
+		<p>
+		</DIV>
+	<!-- Start Publish Study to Production Selections -->
+		<DIV Id = "PUBDiv" style="display:none" Align="Center">
+		<p>Publish Study to Production</p>
+		<p>
+		<select required name="PUBstudyselect" id="PUBstudyselect"></select>
+		<Span Id = "PUBDataArea"></Span>
+		<p>Select Type of Data to publish: (hold the Ctrl key to select multiple values)
+		<select size="2" name="PUBdataType" multiple>		
+		<option value="CLINICAL">Clinical</option>
+		<option value="METADATA">Metadata</option>
+		</select>
+		<p><input type="button" name="PUBbtnSubmit" id="PUBbtnSubmit" Style="Width:80px;" value="Submit" onclick="PUBSubmitJob">
+		<p>
+		</DIV>
+	<!-- Start Load Supplemental Files Selections -->
+		<DIV Id = "ADDLDiv" style="display:none" Align="Center">
+		<p>Link Supplemental Files</p>
+		<p>
+		<p><input Type = "Button" Value = "Browse For Subject-Sample Mapping Folder" Name = "Run_ADDLButton" onClick = "ADDLSelectFolder"><p>
+		<Span Id = "ADDLDataArea"></Span>
+		<p>Select Subject-Sample File: 
+		<select required name="MappingDataBox" id="ADDLMappingDataBox"></select>
+		<p>
+		<p><input type="button" name="ADDLbtnSubmit" id="ADDLbtnSubmit" Style="Width:80px;" value="Submit" onclick="ADDLSubmitJob">
+		<p>
+		</DIV>
+	<!-- Start Load Study Metadata Selections -->
+		<DIV Id = "METADiv" style="display:none" Align="Center">
+		<p>Load Study Metadata</p>
+		<p>
+		<p><input Type = "Button" Value = "Browse For Study Metadata Folder" Name = "Run_METAButton" onClick = "METASelectFolder"><p>
+		<Span Id = "METADataArea"></Span>
+		<p>Select Study Metadata File: 
+		<select required name="MappingDataBox" id="METAMappingDataBox"></select>
+		<p>
+		<p><input type="button" name="METAbtnSubmit" id="METAbtnSubmit" Style="Width:80px;" value="Submit" onclick="METASubmitJob">
+		<p>
+		</DIV>
+	<!-- Start Manage Security for Study Selections -->
+		<DIV Id = "SECDiv" style="display:none" Align="Center">
+		<p>Manage Security for Study</p>
+		<p>
+		<p>Select Environment:
+		<select size="1" name="SECenv" ONCHANGE="SECShowStudies()">
+		<option value="X"> </option>		
+		<option value="DEV">Development</option>
+		<option value="PROD">Production</option>
+		</select>
+		<p>
+		<p>
+		<Span Id = "SECstudyMsg">Loading study names</Span>
+		<p>
+		<Span Id = "SECselectArea">
+		<p>Select Study:
+		<select required name="SECstudyselect" id="SECstudyselect"></select>
+		<p>
+		<p>Select Security Action:
+		<select size="1" name="SECType">
+		<option value="X"> </option>		
+		<option value="Y">Secure Study</option>
+		<option value="N">Remove Security from Study</option>
+		</select>
+		<p>
+		<p><input Type = "Button" Value = "Browse For Logs Folder" Name = "Run_SECButton" onClick = "SECSelectFolder"><p>
+		<Span Id = "SECDataArea"></Span>
+		<p><input type="button" name="SECbtnSubmit" id="SECbtnSubmit" Style="Width:80px;" value="Submit" onclick="SECSubmitJob">
+		</Span>
+		<p>
+		</DIV>
+	<!-- Start Remove Study from Development or Production -->
+		<DIV Id = "RMVDiv" style="display:none" Align="Center">
+		<p>Remove Study from tranSMART</p>
+		<p>
+		<p>Select Environment:
+		<select size="1" name="RMVenv" ONCHANGE="RMVShowStudies()">
+		<option value="X"> </option>		
+		<option value="DEV">Development</option>
+		<option value="PROD">Production</option>
+		</select>
+		<p>
+		<p>
+		<Span Id = "RMVstudyMsg">Loading study names</Span>
+		<p>
+		<Span Id = "RMVselectArea">
+		<p>Select Study:
+		<select required name="RMVstudyselect" id="RMVstudyselect"></select>
+		<p><input Type = "Button" Value = "Browse For Logs Folder" Name = "Run_RMVButton" onClick = "RMVSelectFolder"><p>
+		<p>
+		<Span Id = "RMVDataArea"></Span>
+		<p><input type="button" name="RMVbtnSubmit" id="RMVbtnSubmit" Style="Width:80px;" value="Submit" onclick="RMVSubmitJob">
+		<p>
+		</Span>
+		</DIV>
+	<!-- Start Load Cohort Analysis Selections -->
+		<DIV Id = "CHRTDiv" style="display:none" Align="Center">
+		<p>Load Cohort Analysis Data</p>
+		<p>
+		<p><input Type = "Button" Value = "Browse For Cohort Data Folder" Name = "Run_CHRTButton" onClick = "CHRTSelectFolder"><p>
+		<Span Id = "CHRTDataArea"></Span>
+		<p>Enter Study Id: <input type="text" name="CHRTstudyId" Size="30" id="CHRTstudyId">
+		<p>Enter Study Category Display: <input type="text" name="CHRTcategoryDisplay" Size="30" id="CHRTcategoryDisplay">
+		<p>Enter Study Data Category: <input type="text" name="CHRTdataCategory" Size="30" id="CHRTdataCategory">
+		<p>
+		<p>Select Analysis File: 
+		<select required name="CHRTanalysisFileBox" id="CHRTanalysisFileBox"></select>
+		<p>
+		<p>Select Analysis Data File: 
+		<select required name="CHRTanalysisDataBox" id="CHRTanalysisDataBox"></select>
+		<p>
+		<p>Select Cohorts File: 
+		<select required name="CHRTcohortsFileBox" id="CHRTcohortsFileBox"></select>
+		<p>
+		<p>Select Samples Data File: 
+		<select required name="CHRTsamplesFileBox" id="CHRTsamplesFileBox"></select>
+		<p>
+		<p><input type="button" name="CHRTbtnSubmit" id="CHRTbtnSubmit" Style="Width:80px;" value="Submit" onclick="CHRTSubmitJob">
+		<p>
+		</DIV>
+	<!-- Start Load Recombination Rate Data Selections -->
+		<DIV Id = "RRATEDiv" style="display:none" Align="Center">
+		<p>Load Recombination Rate Data</p>
+		<p>
+		<p><input Type = "Button" Value = "Browse For Recombination Rate data Folder" Name = "Run_RRATEButton" onClick = "RRATESelectFolder"><p>
+		<Span Id = "RRATEDataArea"></Span>
+		<p>Enter prefix of Recombination Rate files: <input type="text" name="RRATEprefix" Size="30" id="RRATEprefix">
+		<p><input type="button" name="RRATEbtnSubmit" id="RRATEbtnSubmit" Style="Width:80px;" value="Submit" onclick="RRATESubmitJob">
+		<p>
+		</DIV>
+	<!-- Start Load Regulome Score Data Selections -->
+		<DIV Id = "REGSCOREDiv" style="display:none" Align="Center">
+		<p>Load Regulome Score Data</p>
+		<p>
+		<p><input Type = "Button" Value = "Browse For Regulome Score data Folder" Name = "Run_REGSCOREButton" onClick = "REGSCORESelectFolder"><p>
+		<Span Id = "REGSCOREDataArea"></Span>
+		<p>Enter prefix of Regulome Score files: <input type="text" name="REGSCOREprefix" Size="30" id="REGSCOREprefix">
+		<p><input type="button" name="REGSCOREbtnSubmit" id="REGSCOREbtnSubmit" Style="Width:80px;" value="Submit" onclick="REGSCORESubmitJob">
+		<p>
+		</DIV>
+	<!-- Progress bar/status area. -->
+		<DIV Id="Statwin" Align="Center" style="display:none"> 
+        </DIV>
+        <!-- Changing the font size changes the size of the bar. --> 
+        <DIV id="Statbar" style="Position:Center;Width:90%;Bottom:10px;Border-width:1;Border-style:solid; 
+        Border-color:#BBBBBB;Font-size:10px;display:none""> 
+        <SPAN ID="bar" class=pgbar></SPAN> 
+        </DIV>
+		<DIV id = "EOJ" style="visibility:visible" Align="Center">
+		<p><input type="button" name="resetForm" id="resetForm" button style="..." value="Cancel" onclick="resetForm">&nbsp&nbsp&nbsp<button STYLE="..." name="Quit">Exit</button>
+		</DIV>
+	</body>
+</html>
